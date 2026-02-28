@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Log Diario</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0c0c0c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Log Diario">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0c0c0c;
+      --surface: #141414;
+      --border:  #202020;
+      --border2: #2c2c2c;
+      --text:    #e8e8e8;
+      --text2:   #888;
+      --text3:   #3a3a3a;
+      --accent:  #7c6ff7;
+      --accent2: #5d58c4;
+      --green:   #4ade80;
+      /* category colors */
+      --c1: #7c6ff7; /* Producción    */
+      --c2: #34d399; /* Mantenimiento */
+      --c3: #f472b6; /* Relaciones    */
+      --c4: #fb923c; /* Desarrollo    */
+      --c5: #60a5fa; /* Juego / Ocio  */
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      max-width: 600px;
+      margin: 0 auto;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 600px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px 8px 16px;
+      background: none;
+      border: none;
+      border-top: 2px solid transparent;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: inherit;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      transition: color 0.2s, border-color 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .tab svg {
+      width: 22px; height: 22px;
+      stroke: currentColor; stroke-width: 1.6;
+      fill: none; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .tab.active { color: var(--accent); border-top-color: var(--accent); }
+
+    /* ── Screens ── */
+    .screen { display: none; padding: 28px 16px 100px; }
+    .screen.active { display: block; }
+
+    /* ── Page header ── */
+    .page-header { margin-bottom: 24px; }
+
+    .page-header .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text3);
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .page-header .title {
+      font-size: 22px;
+      font-weight: 300;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 28px;
+    }
+
+    /* ── Inputs ── */
+    input[type=text], select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 16px; /* 16px prevents iOS zoom */
+      font-family: inherit;
+      padding: 14px 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: none;
+      -webkit-appearance: none;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    input[type=text]:focus, select:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--text3); }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 38px;
+      cursor: pointer;
+    }
+
+    select option { background: #1a1a1a; }
+
+    select:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .input-error { border-color: #ef4444 !important; }
+
+    /* ── Button ── */
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      margin-top: 6px;
+      min-height: 52px;
+    }
+
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-success { background: #16a34a !important; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text3);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    /* ── Log list ── */
+    .log-empty {
+      text-align: center;
+      padding: 44px 0;
+      color: var(--text3);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .log-item {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 0 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      align-items: start;
+    }
+
+    .log-item:last-child { border-bottom: none; }
+
+    .log-time {
+      font-size: 12px;
+      color: var(--text3);
+      font-variant-numeric: tabular-nums;
+      padding-top: 2px;
+    }
+
+    .log-desc {
+      font-size: 15px;
+      color: var(--text);
+      margin-bottom: 5px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .log-tags {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .tag-cat {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      opacity: 0.85;
+    }
+
+    .tag-sub {
+      font-size: 11px;
+      color: var(--text2);
+      letter-spacing: 0.02em;
+    }
+
+    .log-dur {
+      font-size: 13px;
+      color: var(--text3);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      padding-top: 2px;
+    }
+
+    .log-dur.active-now {
+      font-size: 10px;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+      padding-top: 4px;
+    }
+
+    /* ── Category color badges ── */
+    .cat-Producción    { background: rgba(124,111,247,.18); color: var(--c1); }
+    .cat-Mantenimiento { background: rgba(52,211,153,.15);  color: var(--c2); }
+    .cat-Relaciones    { background: rgba(244,114,182,.15); color: var(--c3); }
+    .cat-Desarrollo    { background: rgba(251,146,60,.15);  color: var(--c4); }
+    .cat-Juego         { background: rgba(96,165,250,.15);  color: var(--c5); }
+
+    /* ── Summary section header ── */
+    .sum-section {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text3);
+      font-weight: 700;
+      margin: 28px 0 14px;
+    }
+
+    .sum-section:first-of-type { margin-top: 0; }
+
+    /* ── Summary tables ── */
+    .sum-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 6px;
+    }
+
+    .sum-table th {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text3);
+      font-weight: 700;
+      padding: 6px 5px 12px;
+      text-align: right;
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .sum-table th:first-child { text-align: left; padding-left: 0; }
+
+    .sum-table td {
+      padding: 11px 5px;
+      font-size: 14px;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sum-table td:first-child {
+      text-align: left;
+      padding-left: 0;
+    }
+
+    .sum-table td.zero { color: var(--text3); }
+
+    /* Category name cell with colored dot */
+    .cat-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .cat-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Subcategory group header row */
+    .sum-table tr.group-header td {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+      color: var(--text3);
+      padding: 16px 0 6px;
+      border-bottom: none;
+    }
+
+    .sum-table tr.group-header:first-child td { padding-top: 0; }
+
+    /* Subcategory name indented */
+    .sub-name {
+      color: var(--text2);
+      font-size: 13px;
+      padding-left: 15px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════ SCREEN: REGISTRO ════════ -->
+<div id="screen-log" class="screen active">
+
+  <div class="page-header">
+    <div class="label">Hoy</div>
+    <div class="title" id="today-label"></div>
+  </div>
+
+  <div class="card">
+    <input type="text" id="inp-desc" placeholder="¿Qué estás haciendo ahora?" maxlength="140" autocomplete="off">
+    <select id="inp-cat" onchange="onCatChange()">
+      <option value="" disabled selected>Categoría</option>
+      <option value="Producción">Producción</option>
+      <option value="Mantenimiento">Mantenimiento</option>
+      <option value="Relaciones">Relaciones</option>
+      <option value="Desarrollo interno">Desarrollo interno</option>
+      <option value="Juego / Ocio">Juego / Ocio</option>
+    </select>
+    <select id="inp-sub" disabled>
+      <option value="" disabled selected>Subcategoría</option>
+    </select>
+    <button class="btn-primary" id="btn-reg" onclick="registerActivity()">Iniciar actividad</button>
+  </div>
+
+  <div class="section-label">Registro de hoy</div>
+  <div id="log-list"></div>
+
+</div>
+
+<!-- ════════ SCREEN: RESUMEN ════════ -->
+<div id="screen-summary" class="screen">
+
+  <div class="page-header">
+    <div class="label">Distribución de tiempo</div>
+    <div class="title">Resumen</div>
+  </div>
+
+  <!-- Table 1: main categories -->
+  <div class="sum-section">Por categoría</div>
+  <table class="sum-table">
+    <thead>
+      <tr>
+        <th>Categoría</th>
+        <th>Hoy</th>
+        <th>7 días</th>
+        <th>30 días</th>
+      </tr>
+    </thead>
+    <tbody id="summary-cats"></tbody>
+  </table>
+
+  <!-- Table 2: subcategories -->
+  <div class="sum-section">Por subcategoría</div>
+  <table class="sum-table">
+    <thead>
+      <tr>
+        <th>Subcategoría</th>
+        <th>Hoy</th>
+        <th>7 días</th>
+        <th>30 días</th>
+      </tr>
+    </thead>
+    <tbody id="summary-subs"></tbody>
+  </table>
+
+</div>
+
+<!-- ════════ NAV ════════ -->
+<nav>
+  <button class="tab active" onclick="switchTab('log', this)">
+    <svg viewBox="0 0 24 24">
+      <path d="M12 20h9"/>
+      <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>
+    </svg>
+    Registro
+  </button>
+  <button class="tab" onclick="switchTab('summary', this)">
+    <svg viewBox="0 0 24 24">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <path d="M3 9h18M9 21V9"/>
+    </svg>
+    Resumen
+  </button>
+</nav>
+
+<script>
+// ── Taxonomy ───────────────────────────────────────────────────────────────
+const TAXONOMY = {
+  'Producción':        ['Trabajo', 'Emprendimiento'],
+  'Mantenimiento':     ['Salud básica', 'Salud activa', 'Logística / hogar'],
+  'Relaciones':        ['Hijos', 'Pareja', 'Familia / entorno social'],
+  'Desarrollo interno':['Aprendizaje profesional', 'Aprendizaje personal', 'Planificación / reflexión / terapia'],
+  'Juego / Ocio':      ['Hobby creativo', 'Entretenimiento consciente', 'Consumo pasivo / distracción']
+};
+
+// Color for each category (same order as TAXONOMY keys)
+const CAT_COLORS = {
+  'Producción':         { dot: '#7c6ff7', badge: 'cat-Producción',    label: 'PROD'  },
+  'Mantenimiento':      { dot: '#34d399', badge: 'cat-Mantenimiento', label: 'MANT'  },
+  'Relaciones':         { dot: '#f472b6', badge: 'cat-Relaciones',    label: 'REL'   },
+  'Desarrollo interno': { dot: '#fb923c', badge: 'cat-Desarrollo',    label: 'DES'   },
+  'Juego / Ocio':       { dot: '#60a5fa', badge: 'cat-Juego',         label: 'OCIO'  }
+};
+
+const CATS  = Object.keys(TAXONOMY);
+const DAYS   = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MONTHS = ['enero','febrero','marzo','abril','mayo','junio',
+                'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+// ── Storage ────────────────────────────────────────────────────────────────
+function loadEntries() {
+  try { return JSON.parse(localStorage.getItem('dailyLog') || '[]'); }
+  catch { return []; }
+}
+
+function saveEntries(arr) {
+  localStorage.setItem('dailyLog', JSON.stringify(arr));
+}
+
+// ── Date helpers ───────────────────────────────────────────────────────────
+function dateStr(d) {
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit', hour12: false });
+}
+
+function fmtHours(h) {
+  if (h <= 0) return '—';
+  const hrs = Math.floor(h);
+  const min = Math.round((h - hrs) * 60);
+  if (hrs === 0) return `${min}m`;
+  if (min === 0) return `${hrs}h`;
+  return `${hrs}h ${min}m`;
+}
+
+function fmtPct(h, total) {
+  if (total <= 0 || h <= 0) return '—';
+  const p = Math.round(h / total * 100);
+  return p === 0 ? '<1%' : `${p}%`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Duration calculation ───────────────────────────────────────────────────
+// Each entry's duration = next entry start time − this entry start time,
+// only when both entries are on the same calendar day. Last entry of day = 0.
+function computeDurations(entries) {
+  const sorted = [...entries].sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  return sorted.map((e, i) => {
+    let dur = 0;
+    if (i < sorted.length - 1) {
+      const next = sorted[i + 1];
+      if (next.date === e.date) {
+        dur = (new Date(next.ts) - new Date(e.ts)) / 3_600_000;
+      }
+    }
+    return { ...e, dur };
+  });
+}
+
+// ── Cascading selects ──────────────────────────────────────────────────────
+function onCatChange() {
+  const cat   = document.getElementById('inp-cat').value;
+  const subEl = document.getElementById('inp-sub');
+  subEl.innerHTML = '<option value="" disabled selected>Subcategoría</option>';
+  if (cat && TAXONOMY[cat]) {
+    TAXONOMY[cat].forEach(sub => {
+      const opt = document.createElement('option');
+      opt.value = sub;
+      opt.textContent = sub;
+      subEl.appendChild(opt);
+    });
+    subEl.disabled = false;
+  } else {
+    subEl.disabled = true;
+  }
+  subEl.value = '';
+  subEl.classList.remove('input-error');
+}
+
+// ── Register ───────────────────────────────────────────────────────────────
+function registerActivity() {
+  const descEl = document.getElementById('inp-desc');
+  const catEl  = document.getElementById('inp-cat');
+  const subEl  = document.getElementById('inp-sub');
+  const desc   = descEl.value.trim();
+  const cat    = catEl.value;
+  const sub    = subEl.value;
+
+  [descEl, catEl, subEl].forEach(el => el.classList.remove('input-error'));
+
+  let ok = true;
+  if (!desc) { descEl.classList.add('input-error'); ok = false; }
+  if (!cat)  { catEl.classList.add('input-error');  ok = false; }
+  if (!sub)  { subEl.classList.add('input-error');  ok = false; }
+  if (!ok) return;
+
+  const now = new Date();
+  const entry = {
+    id:   now.getTime().toString(),
+    ts:   now.toISOString(),
+    date: dateStr(now),
+    desc,
+    cat,   // main category
+    sub    // subcategory
+  };
+
+  const entries = loadEntries();
+  entries.push(entry);
+  saveEntries(entries);
+
+  // Reset form
+  descEl.value = '';
+  catEl.value  = '';
+  subEl.innerHTML = '<option value="" disabled selected>Subcategoría</option>';
+  subEl.disabled  = true;
+
+  renderLog();
+
+  // Success feedback
+  const btn = document.getElementById('btn-reg');
+  btn.textContent = '✓ Registrado';
+  btn.classList.add('btn-success');
+  setTimeout(() => {
+    btn.textContent = 'Iniciar actividad';
+    btn.classList.remove('btn-success');
+  }, 1400);
+}
+
+// ── Render log ─────────────────────────────────────────────────────────────
+function renderLog() {
+  const today = dateStr(new Date());
+  const all   = computeDurations(loadEntries());
+  const items = all.filter(e => e.date === today)
+                   .sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
+  const el = document.getElementById('log-list');
+
+  if (items.length === 0) {
+    el.innerHTML = `<div class="log-empty">Sin actividades registradas hoy.<br>¡Empieza registrando la primera!</div>`;
+    return;
+  }
+
+  const latestTs = new Date(items[0].ts).getTime();
+
+  el.innerHTML = items.map(item => {
+    const isCurrent = new Date(item.ts).getTime() === latestTs;
+    const durHTML = isCurrent
+      ? `<div class="log-dur active-now">activa</div>`
+      : `<div class="log-dur">${fmtHours(item.dur)}</div>`;
+    const color = CAT_COLORS[item.cat] || CAT_COLORS['Producción'];
+    const subLabel = item.sub || item.cat; // fallback for old entries
+    return `
+      <div class="log-item">
+        <div class="log-time">${fmtTime(item.ts)}</div>
+        <div>
+          <div class="log-desc">${escHtml(item.desc)}</div>
+          <div class="log-tags">
+            <span class="tag-cat ${color.badge}">${color.label}</span>
+            <span class="tag-sub">${escHtml(subLabel)}</span>
+          </div>
+        </div>
+        ${durHTML}
+      </div>`;
+  }).join('');
+}
+
+// ── Render summary ─────────────────────────────────────────────────────────
+function renderSummary() {
+  const now   = new Date();
+  const today = dateStr(now);
+
+  const d7  = new Date(now); d7.setDate(d7.getDate() - 6);
+  const d30 = new Date(now); d30.setDate(d30.getDate() - 29);
+  const str7  = dateStr(d7);
+  const str30 = dateStr(d30);
+
+  const all = computeDurations(loadEntries());
+
+  // Accumulate hours per category and subcategory × time window
+  const catAcc = {};
+  CATS.forEach(c => {
+    catAcc[c] = { t: 0, w: 0, m: 0 };
+    TAXONOMY[c].forEach(s => { /* handled below */ });
+  });
+
+  // Flat subcat accumulator: key = "Cat::Sub"
+  const subAcc = {};
+  CATS.forEach(c => TAXONOMY[c].forEach(s => { subAcc[`${c}::${s}`] = { t:0, w:0, m:0 }; }));
+
+  all.forEach(e => {
+    if (!catAcc[e.cat]) return;
+    const key = `${e.cat}::${e.sub}`;
+    const isToday = e.date === today;
+    const inWeek  = e.date >= str7;
+    const inMonth = e.date >= str30;
+
+    if (isToday) catAcc[e.cat].t += e.dur;
+    if (inWeek)  catAcc[e.cat].w += e.dur;
+    if (inMonth) catAcc[e.cat].m += e.dur;
+
+    if (subAcc[key]) {
+      if (isToday) subAcc[key].t += e.dur;
+      if (inWeek)  subAcc[key].w += e.dur;
+      if (inMonth) subAcc[key].m += e.dur;
+    }
+  });
+
+  // Totals for percentage base
+  let totT = 0, totW = 0, totM = 0;
+  CATS.forEach(c => { totT += catAcc[c].t; totW += catAcc[c].w; totM += catAcc[c].m; });
+
+  // ── Table 1: categories ──
+  const catRows = CATS.map(c => {
+    const { t, w, m } = catAcc[c];
+    const color = CAT_COLORS[c];
+    return `
+      <tr>
+        <td>
+          <span class="cat-name">
+            <span class="cat-dot" style="background:${color.dot}"></span>
+            ${escHtml(c)}
+          </span>
+        </td>
+        <td class="${t===0?'zero':''}">${fmtPct(t, totT)}</td>
+        <td class="${w===0?'zero':''}">${fmtPct(w, totW)}</td>
+        <td class="${m===0?'zero':''}">${fmtPct(m, totM)}</td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('summary-cats').innerHTML = catRows;
+
+  // ── Table 2: subcategories grouped under parent ──
+  let subRows = '';
+  CATS.forEach(c => {
+    const color = CAT_COLORS[c];
+    subRows += `
+      <tr class="group-header">
+        <td colspan="4">
+          <span style="display:inline-flex;align-items:center;gap:6px;">
+            <span style="width:5px;height:5px;border-radius:50%;background:${color.dot};display:inline-block;"></span>
+            ${escHtml(c)}
+          </span>
+        </td>
+      </tr>`;
+    TAXONOMY[c].forEach(s => {
+      const { t, w, m } = subAcc[`${c}::${s}`];
+      subRows += `
+        <tr>
+          <td class="sub-name">${escHtml(s)}</td>
+          <td class="${t===0?'zero':''}">${fmtPct(t, totT)}</td>
+          <td class="${w===0?'zero':''}">${fmtPct(w, totW)}</td>
+          <td class="${m===0?'zero':''}">${fmtPct(m, totM)}</td>
+        </tr>`;
+    });
+  });
+
+  document.getElementById('summary-subs').innerHTML = subRows;
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function switchTab(screen, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  btn.classList.add('active');
+  if (screen === 'summary') renderSummary();
+  if (screen === 'log')     renderLog();
+}
+
+// ── Service Worker ─────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+(function init() {
+  const now = new Date();
+  document.getElementById('today-label').textContent =
+    `${DAYS[now.getDay()]} ${now.getDate()} de ${MONTHS[now.getMonth()]}`;
+  renderLog();
+})();
+</script>
+</body>
+</html>
