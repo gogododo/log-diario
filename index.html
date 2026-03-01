@@ -252,10 +252,8 @@
     }
 
     .log-dur.active-now {
-      font-size: 10px;
+      font-size: 13px;
       color: var(--green);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
       font-weight: 700;
       padding-top: 4px;
     }
@@ -504,6 +502,10 @@ function escHtml(s) {
           .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function elapsedH(iso) {
+  return (Date.now() - new Date(iso).getTime()) / 3_600_000;
+}
+
 // ── Duration calculation ───────────────────────────────────────────────────
 // Each entry's duration = next entry start time − this entry start time,
 // only when both entries are on the same calendar day. Last entry of day = 0.
@@ -609,7 +611,7 @@ function renderLog() {
   el.innerHTML = items.map(item => {
     const isCurrent = new Date(item.ts).getTime() === latestTs;
     const durHTML = isCurrent
-      ? `<div class="log-dur active-now">activa</div>`
+      ? `<div class="log-dur active-now" id="live-timer" data-ts="${item.ts}">${fmtHours(elapsedH(item.ts))}</div>`
       : `<div class="log-dur">${fmtHours(item.dur)}</div>`;
     const color = CAT_COLORS[item.cat] || CAT_COLORS['Producción'];
     const subLabel = item.sub || item.cat; // fallback for old entries
@@ -730,6 +732,13 @@ function switchTab(screen, btn) {
   if (screen === 'summary') renderSummary();
   if (screen === 'log')     renderLog();
 }
+
+// ── Timer en vivo (actualiza cada 30 segundos) ─────────────────────────────
+setInterval(() => {
+  const el = document.getElementById('live-timer');
+  if (!el) return;
+  el.textContent = fmtHours(elapsedH(el.dataset.ts));
+}, 30_000);
 
 // ── Service Worker ─────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
